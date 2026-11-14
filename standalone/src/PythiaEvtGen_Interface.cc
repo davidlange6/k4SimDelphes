@@ -20,6 +20,8 @@
 #include "EvtGenBase/EvtRandomEngine.hh"
 #include "EvtGenExternal/EvtExternalGenList.hh"
 
+#include <algorithm>
+
 // local
 #include "PythiaEvtGen_Interface.h"
 
@@ -32,11 +34,10 @@
 //=============================================================================
 // Standard constructor, initializes variables
 //=============================================================================
-PythiaEvtGen_Interface::PythiaEvtGen_Interface(Pythia8::Pythia* p, std::string pdf, std::string evt_pdl, int seed) {
+PythiaEvtGen_Interface::PythiaEvtGen_Interface(Pythia8::Pythia* p, std::string pdf, std::string evt_pdl) {
   // this is a standard constructor used for default confuguration
   pythia = p; // adding pythia
   particleDataFile = pdf;
-  init_seed = seed;
   pdl = evt_pdl;
   debug = false;
 
@@ -62,11 +63,6 @@ void PythiaEvtGen_Interface::add_decays(std::string decayfile, int motherID, std
   sig_names.push_back(name);
 }
 void PythiaEvtGen_Interface::add_inclusive(std::string decayfile) {
-  add_inclusive(decayfile, init_seed);
-  init_seed++;
-}
-
-void PythiaEvtGen_Interface::add_inclusive(std::string decayfile, int seed) {
   // Specify if we want to use Pythia 6 physics codes for decays
   bool convertPythiaCodes = false;
   // Specify the pythia xml data directory to use the default PYTHIA8DATA location
@@ -83,7 +79,10 @@ void PythiaEvtGen_Interface::add_inclusive(std::string decayfile, int seed) {
   std::list<EvtDecayBase*> extraModels = genList.getListOfModels();
   // Random engine:
 
-  EvtRandomEngine* eng = new EvtMTRandomEngine(seed);
+  // Use the Pythia random number generator (as Pythia8::EvtGenDecays does), so that the EvtGen decays follow the
+  // Pythia seed instead of a fixed one
+  rndmEngine = std::make_unique<Pythia8::EvtGenRandom>(&pythia->rndm);
+  EvtRandomEngine* eng = rndmEngine.get();
   EvtRandom::setRandomEngine(eng);
 
   if (debug)
@@ -159,7 +158,11 @@ void PythiaEvtGen_Interface::decay_signals() {
   unsigned NOfSignal = motherIDs.size();
   for (auto i_sig = 0u; i_sig < NOfSignal; i_sig++) // loop over signal B's
   {
-    int randomsignal = (rand() % NOfSignal_list[i_sig]);
+    if (NOfSignal_list[i_sig] <= 0)
+      continue; // no candidate for this signal in the event
+    // choose one of the candidate signal particles using the Pythia random number generator
+    const int randomsignal =
+        std::min(static_cast<int>(pythia->rndm.flat() * NOfSignal_list[i_sig]), NOfSignal_list[i_sig] - 1);
     if (debug)
       std::cout << "Rand: " << randomsignal << std::endl;
     int part_index = signal_map[i_sig][randomsignal];

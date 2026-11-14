@@ -113,7 +113,7 @@ public:
 
     int regenerate = 0; //=atoi(argv[10]);
 
-    m_evtgen2 = new PythiaEvtGen_Interface(m_pythia.get(), argv[5], argv[6], 1000);
+    m_evtgen2 = new PythiaEvtGen_Interface(m_pythia.get(), argv[5], argv[6]);
 
     // m_evtgen2->set_verbose();
     // m_evtgen2->set_debug();

@@ -16,6 +16,7 @@
 
 // std
 #include <cstdlib>
+#include <memory>
 
 /** @class PythiaEvtGen_Interface PythiaEvtGen_Interface.h k4simdelphes/PythiaEvtGen_Interface.h
  *
@@ -25,8 +26,9 @@
  */
 class PythiaEvtGen_Interface {
 public:
-  /// Standard constructor
-  PythiaEvtGen_Interface(Pythia8::Pythia* p, std::string pdf, std::string evt_pdl, int seed);
+  /// Standard constructor. EvtGen (and Photos/Tauola) draw their random numbers from the random number generator of
+  /// the passed Pythia instance, so they follow its seed (Random:seed)
+  PythiaEvtGen_Interface(Pythia8::Pythia* p, std::string pdf, std::string evt_pdl);
 
   virtual ~PythiaEvtGen_Interface(); ///< Destructor
 
@@ -34,7 +36,6 @@ public:
   // void add_decays(std::string decayfile, int motherID);
   void add_decays(std::string decayfile, int motherID, std::string name);
 
-  void add_inclusive(std::string decayfile, int seed);
   void add_inclusive(std::string decayfile);
 
   void decay_signals();
@@ -58,7 +59,8 @@ private:
   std::vector<std::string> sig_names;
   Pythia8::Pythia* pythia;
   std::string particleDataFile;
-  int init_seed;
+  /// EvtGen random engine wrapping the Pythia random number generator
+  std::unique_ptr<Pythia8::EvtGenRandom> rndmEngine;
 
   std::string pdl;
   // int **signal_map;
